@@ -61,21 +61,20 @@
     </div>
     <script>
         
-        window.onload = function(){
-            document.getElementById('closeButton').classList.add('hidden');
-        };
-        fetch("https://docs.google.com/spreadsheets/d/1SZE6sIO6wE-OZByk_7mBvM9jY8PvSj1OKSaLbU4z8ec/gviz/tq?tqx=out:json")
-            .then(res => res.text())
-            .then(data => {
-            const json = JSON.parse(data.substr(47).slice(0, -2));
-            const rows = json.table.rows;
-        rows.slice(1).forEach(row => {
-            const rawDate = row.c[0]?.v;
-            const title = row.c[1]?.v || "";
-            const desc = row.c[2]?.v || "";
-            const dateObj = new Date(rawDate);
-            const dateStr = dateObj.toISOString().split("T")[0];
-            console.log(`${dateStr}: ${title} - ${desc}`);
+        // window.onload = function(){
+        //     document.getElementById('closeButton').classList.add('hidden');
+        // };
+        fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vTkwCpTivPwZ4D6rOhj8-dryeQQJj3WrxZpMlh_rH3yrD0ZXv_kMEXIrCAo1_GwfGkqHjoZyAtsshIr/pub?output=csv")
+        .then(res => res.text())
+        .then(text => {
+            const rows = text.split("\n").map(line => line.split(","));
+            rows.slice(1).forEach(row => {
+                const rawDate = row[0];
+                const title = row[1] || "";
+                const desc = row[2] || "";
+                const dateObj = new Date(rawDate);
+                const dateStr = dateObj.toISOString().split("T")[0];
+                console.log(`${dateStr}: ${title} - ${desc}`);
             });
         });
 
@@ -86,40 +85,35 @@
                 initialView: 'dayGridMonth',
                 events: async function(fetchInfo, successCallback, failureCallback) {
                     try {
-                        const res = await fetch("https://docs.google.com/spreadsheets/d/1SZE6sIO6wE-OZByk_7mBvM9jY8PvSj1OKSaLbU4z8ec/gviz/tq?tqx=out:json");
+                        const res = await fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vTkwCpTivPwZ4D6rOhj8-dryeQQJj3WrxZpMlh_rH3yrD0ZXv_kMEXIrCAo1_GwfGkqHjoZyAtsshIr/pub?output=csv");
                         const text = await res.text();
-                        const json = JSON.parse(text.substr(47).slice(0, -2));
-                        const rows = json.table.rows;
+                        const rows = text.split("\n").map(line => line.split(","));
 
                         const events = rows.slice(1).map(row => {
-                            const rawDate = row.c[0]?.v;
-                            const title = row.c[1]?.v || "";
+                            const rawDate = row[0];
+                            const title = row[1] || "";
+
                             const descParts = [];
-                            for(let i=2; i<row.c.length; i++){
-                                const part = row.c[i]?.v;
-                                if(part) descParts.push(part);
+                            for (let i = 2; i < row.length; i++) {
+                                const part = row[i]?.trim();
+                                if (part) descParts.push(part.replace(/^"|"$/g, "")); // 따옴표 제거
                             }
                             const desc = descParts.join("\n");
-                            if(!rawDate||!title) return null;
-                            let dateStr;
-                            if(typeof rawDate == "string"){
-                                dateStr = rawDate.split("T")[0];
-                            } else{
-                                const dateObj = new Date(rawDate);
-                                dateStr = dateObj.toISOString().split("T")[0];
-                            }
-                            return{
+
+                            if (!rawDate || !title) return null;
+
+                            return {
                                 title: title,
-                                start: dateStr,
+                                start: rawDate,
                                 description: desc
                             };
-                            }).filter(e => e);
+                        }).filter(e => e);
 
-                    successCallback(events);
+                        successCallback(events);
                     } catch (error) {
                         failureCallback(error);
-                        }
-                    },
+                    }
+                },
                     eventClick: function(info){
                         const title = info.event.title;
                         const desc = info.event.extendedProps.description;
